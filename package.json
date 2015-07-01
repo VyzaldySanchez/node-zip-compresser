@@ -1,0 +1,11 @@
+{
+  "name": "archiver-compresser-implementation",
+  "version": "0.1.0",
+  "description": "An example module to show how does archiver works",
+  "author": "Vyzaldy Andres Sanchez vyzaldysanchez@gmail.com",
+  "dependencies": {
+    "archiver": "^0.14.4",
+    "express": "^4.13.0"
+  },
+  "license": "MIT"
+}
