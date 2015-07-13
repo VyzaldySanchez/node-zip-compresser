@@ -5,7 +5,9 @@
   "author": "Vyzaldy Andres Sanchez vyzaldysanchez@gmail.com",
   "dependencies": {
     "archiver": "^0.14.4",
-    "express": "^4.13.0"
+    "body-parser": "^1.13.1",
+    "express": "^4.13.0",
+    "multer": "^0.1.8"
   },
   "license": "MIT"
 }

@@ -1,56 +1,132 @@
 var express = require('express'),
-    archiver = require('archiver'),
-    fs = require('fs'),
-    path = require('path'),
-    app = express(),
-    zipFile = fs.createWriteStream('zip-files/files.zip');
+  archiver = require('archiver'),
+  fs = require('fs'),
+  path = require('path'),
+  bodyParser = require('body-parser'),
+  multer = require('multer'),
+  app = express(),
+  date = new Date(),
+  tmpName = 'zip-files/' + date.toUTCString() +
+  '.zip',
+  zipFile = fs.createWriteStream(tmpName);
 
 //Define static files's folder
-app.use(express.static(path.join(__dirname + '/public')));
+app.use(express.static(path.join(__dirname + '/public/')));
+app.use(multer());
+// parse application/x-www-form-urlencoded
+app.use(bodyParser.urlencoded({
+  extended: true
+}));
+// parse application/json
+app.use(bodyParser.json());
 
-app.get('/compress', function (req, res) {
+function compressFiles(files, compressor) {
 
-  var compressor = archiver('zip');
+  var reader = null;
 
-  compressor.on('error', function (err) {
-    console.log({ error: err.message });
+  if (files.length < 1) return false;
+
+  if (files.length > 1) {
+
+    files.forEach(function(file) {
+
+      if (typeof file !== 'object') return false;
+
+      try {
+
+        reader = fs.createReadStream(file.path);
+
+        compressor.append(reader, {
+          name: file.originalname
+        });
+
+      } catch (e) {
+        console.log('Error:', e);
+      }
+
+    });
+
+  } else {
+    try {
+
+      var file = files;
+
+      reader = fs.createReadStream(file.path);
+
+      compressor.append(reader, {
+        name: file.originalname
+      });
+
+    } catch (e) {
+      console.log('Error:', e);
+    }
+
+  }
+
+}
+
+app.post('/compress', function(req, res) {
+
+  var compressor = archiver('zip'),
+    host = req.headers.host;
+
+  compressor.on('error', function(err) {
+    console.log({
+      error: err.message
+    });
   });
 
-  res.on('close', function () {
+  res.on('close', function() {
     console.log('Archive wrote %d bytes', compressor.pointer());
   });
 
-  //res.attachment('archive.zip');
+  //do this if you want to download the file as
+  //soon as the compressing function is done
+  //res.attachment('archive_name.zip');
+  //compressor.pipe(res);
 
-  //Connect the response with the compressor via pipe-line
-  compressor.pipe(zipFile);
+  var length = 0;
 
-  var filesToCompress = req.query.files;
+  try {
+    //res.attachment('/zip-files/files.zip');
+    var filesToCompress = req.files.files;
 
-  filesToCompress.forEach(function (current) {
+    //Connect the response with the compressor via pipe-line
+    compressor.pipe(zipFile);
 
-    var dir = '/home/vizaldy/Pictures/',
-        reader = null;
+    length = filesToCompress.length;
 
-    try {
+    compressFiles(filesToCompress, compressor);
+    compressor.finalize();
 
-      reader = fs.createReadStream(path.join(dir, current));
+  } catch (e) {
+    console.log('e:', e);
+  }
 
-      compressor.append(reader, { name: path.basename(current) });
-
-    } catch(e) {
-      console.log(e);
-    }
-
+  res.send({
+    zipUrl: '/' + tmpName,
+    length: length
   });
-
-  compressor.finalize();
-
-  res.send({ zipUrl: path.join(__dirname, '/zip-files/files.zip') });
 
 });
 
-app.listen(8000, function () {
+//Here we set the download functionality
+app.get('/zip-files/:file', function(req, res) {
+
+  try {
+    var file = req.params.file;
+
+    var reader = fs.createReadStream('./zip-files/' + file);
+
+    res.attachment('./zip-files/' + file);
+    reader.pipe(res);
+
+  } catch (e) {
+    console.log(e);
+  }
+
+});
+
+app.listen(8000, function() {
   console.log('App running on port: 8000');
-  console.log(path.join(__dirname, '/zip-files/files.zip'));
 });
